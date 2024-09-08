@@ -65,9 +65,9 @@ void setup() {
 
 void loop()
 {
-rastgele();
-   // Mega Sinyal Gönderdiğinde başlayacak
-   //duvar_takip();
+  //rastgele();
+  // Mega Sinyal Gönderdiğinde başlayacak
+  duvar_takip();
 
 }
 
@@ -283,21 +283,21 @@ void olcum() {
   noFilter = pulseIn(out, LOW);
   noFilter = map(noFilter, 8, 68, 0, 100);
 
-  
-    Serial.print("KIRMIZI: ");
-    Serial.print(kirmizi);
-    Serial.print(" ");
 
-    Serial.print("MAVİ: ");
-    Serial.print(mavi);
-    Serial.print(" ");
+  Serial.print("KIRMIZI: ");
+  Serial.print(kirmizi);
+  Serial.print(" ");
 
-    Serial.print("YEŞİL: ");
-    Serial.print(yesil);
-    Serial.print(" ");
+  Serial.print("MAVİ: ");
+  Serial.print(mavi);
+  Serial.print(" ");
 
-    Serial.print("FİLTRESİZ: ");
-    Serial.println(noFilter);
+  Serial.print("YEŞİL: ");
+  Serial.print(yesil);
+  Serial.print(" ");
+
+  Serial.print("FİLTRESİZ: ");
+  Serial.println(noFilter);
 
 }
 

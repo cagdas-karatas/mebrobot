@@ -22,6 +22,7 @@ int mavi_veriler[7] = {0,0,0,0,0,0,0};
 int yesil_veriler[7] = {0,0,0,0,0,0,0}; 
 int noFilter_veriler[7] = {0,0,0,0,0,0,0};
 
+int baslangicNoFilter = 0;
 
 void setup() {
   arka_sol_kapak.attach(3); 
@@ -42,6 +43,7 @@ void setup() {
 
   baslangic();
 
+  delay(2000);
   for(int i = 0; i < 7; i++)
   {
     olcum();
@@ -50,13 +52,54 @@ void setup() {
     yesil_veriler[i] = yesil;
     noFilter_veriler[i] = noFilter;
   }
+  
+  dogru_veri_al();
+  
+  baslangicNoFilter = noFilter;
 }
 
 void loop() 
 {
+  /*
+  long firstTime = millis();
+  while( (millis() - firstTime) <= 15000)
+  {
+    kalibre();
+  }
+  Serial.println("Değişim yapın...");
+  delay(5000);
+  firstTime = millis();
+  while( (millis() - firstTime) <= 15000)
+  {
+    kalibre();
+  }
+  Serial.print("Kırmızı Aralık : map(kirmizi, ");
+  Serial.print(enKucukKirmizi);
+  Serial.print(", ");
+  Serial.print(enBuyukKirmizi);
+  Serial.println(", 0, 100);");
+  Serial.print("Mavi Aralık : map(mavi, ");
+  Serial.print(enKucukMavi);
+  Serial.print(", ");
+  Serial.print(enBuyukMavi);
+  Serial.println(", 0, 100);");
+  Serial.print("Yeşil Aralık : map(yesil, ");
+  Serial.print(enKucukYesil);
+  Serial.print(", ");
+  Serial.print(enBuyukYesil);
+  Serial.println(", 0, 100);");
+  Serial.print("Filtresiz Aralık : map(noFilter, ");
+  Serial.print(enKucukFiltresiz);
+  Serial.print(", ");
+  Serial.print(enBuyukFiltresiz);
+  Serial.println(", 0, 100);");
+  while(true){}
+  */
+  
   olcum();
   //verileri güncelliyoruz
-  
+
+  //verileri 1 geri kaydırıyoruz
   for(int i = 0; i < 6; i++)
   {
     kirmizi_veriler[i] = kirmizi_veriler[i+1];
@@ -64,12 +107,14 @@ void loop()
     yesil_veriler[i] = yesil_veriler[i+1];
     noFilter_veriler[i] = noFilter_veriler[i+1];
   }
-  
+
+  //en son gelen veriyi son elemanlara yolluyoruz
   kirmizi_veriler[6] = kirmizi;
   mavi_veriler[6] = mavi;
   yesil_veriler[6] = yesil;
   noFilter_veriler[6] = noFilter;
 
+  //bütün diziler içindeki en çok tekrar eden değerler benim kirmizi, mavi, yesil ve noFilter değişkenlerime atanır
   dogru_veri_al();
 
   Serial.print("KIRMIZI: ");
@@ -86,8 +131,9 @@ void loop()
 
   Serial.print("FİLTRESİZ: ");
   Serial.println(noFilter);
+
   
-  if (yuzde_sorgu(290, 500) && (( (float)yesil / (float)noFilter ) * 100) > 116) 
+  if ( yuzdeSorgu(mavi, kirmizi, 195, 260, "mavi / kirmizi = ") && top_var_mi() ) 
   {
     //KIRMIZI TOP ALGILADIK
     Serial.println("Kırmızı");
@@ -108,7 +154,7 @@ void loop()
     }
     
   } 
-  else if (yuzde_sorgu(10, 60) && (( (float)yesil / (float)noFilter ) * 100) > 116) 
+  else if ( yuzdeSorgu(kirmizi, mavi, 170, 210, "kirmizi / mavi = ") && top_var_mi() ) 
   {
     //MAVİ TOP ALGILADIK
     Serial.println("Mavi");
@@ -125,7 +171,7 @@ void loop()
       delay(40);
     }
   } 
-  else if (yuzde_sorgu(110, 180) && ceza_sorgu()) 
+  else if ( yuzdeSorgu(mavi, kirmizi, 80, 170, "mavi / kirmizi = ") && top_var_mi() ) 
   {
     //CEZA YUMURTASI ALGILADIK
     Serial.println("Ceza");
@@ -147,7 +193,8 @@ void loop()
     Serial.println("Boşş");
   }
 
-  delay(100);
+  delay(300);
+  
 }
 
 void kalibre () {
@@ -272,7 +319,7 @@ void olcum()
   delay(10);
 
   kirmizi = pulseIn(out, LOW);
-  kirmizi = map(kirmizi, 24, 354, 0, 100);
+  //kirmizi = map(kirmizi, 24, 354, 0, 100);
 
 
   //maviyi okuyoruz
@@ -281,7 +328,7 @@ void olcum()
   delay(10);
 
   mavi = pulseIn(out, LOW);
-  mavi = map(mavi, 22, 323, 0, 100);
+  //mavi = map(mavi, 22, 323, 0, 100);
  
   
   //yeşili okuyoruz
@@ -290,7 +337,7 @@ void olcum()
   delay(10);
 
   yesil = pulseIn(out, LOW);
-  yesil = map(yesil, 23, 405, 0, 100);
+  //yesil = map(yesil, 23, 405, 0, 100);
 
   
   //Filtresiz okuyoruz
@@ -299,7 +346,7 @@ void olcum()
   delay(10);
 
   noFilter = pulseIn(out, LOW);
-  noFilter = map(noFilter, 8, 122, 0, 100);
+  //noFilter = map(noFilter, 8, 122, 0, 100);
 
 /*
   Serial.print("KIRMIZI: ");
@@ -420,11 +467,19 @@ boolean aralik_sorgu(int kk, int kb, int mk, int mb, int yk, int yb, int fk, int
   && (noFilter >= fk) && (noFilter <= fb) );
 }
 
-boolean yuzde_sorgu(int kucuk, int buyuk){
-  float yuzde = ((float)mavi / (float)kirmizi)*100;
-  Serial.print("m/k = ");
+boolean yuzdeSorgu(int buyukDegisken, int kucukDegisken, int kucuk, int buyuk, String mesaj){
+  float yuzde = ((float)buyukDegisken / (float)kucukDegisken)*100;
+  Serial.print(mesaj);
   Serial.println(yuzde);
   return (yuzde >= kucuk) && (yuzde <= buyuk);
+}
+
+boolean top_var_mi()
+{
+  float yuzde = ((float)noFilter / (float)baslangicNoFilter)*100;
+  Serial.print("filtre oranı: ");
+  Serial.println(yuzde);
+  return (yuzde >= 120) && (yuzde <= 220);
 }
 
 boolean ceza_sorgu(){
