@@ -12,7 +12,6 @@ const int sol_goz = 32;
 const int on_goz = 31;
 const int sag_goz = 30;
 
-
 // ****** BÖLGE BULAN RENK SENSÖRÜ ******
 #define s0 22 //Mavi
 #define s1 23 //Sarı
@@ -32,6 +31,8 @@ int enKucukKirmizi = 50, enBuyukKirmizi = 50,
 int sol_goz_durum = 0;
 
 int baslangicNoFilter = 0;
+int tokatlama_sayac_dolma_sinyali = 53;
+int tokatlama_kilitleme_sinyali = 52;
 
 void setup() {
   pinMode(in1, OUTPUT);
@@ -47,12 +48,16 @@ void setup() {
   pinMode(s1, OUTPUT);
   pinMode(s2, OUTPUT);
   pinMode(s3, OUTPUT);
+  pinMode(tokatlama_kilitleme_sinyali, OUTPUT);
+  pinMode(tokatlama_sayac_dolma_sinyali, INPUT);
   pinMode(out, INPUT);
   Serial.begin(9600);
   bizim_bolge.attach(9);
   bizim_bolge.write(1);
   //tokatlama.attach(8);
   //tokatlama.write(1);
+
+  digitalWrite(tokatlama_kilitleme_sinyali, LOW);
 
   olcum();
   baslangicNoFilter = noFilter;
@@ -65,10 +70,15 @@ void setup() {
 
 void loop()
 {
-  //rastgele();
-  // Mega Sinyal Gönderdiğinde başlayacak
-  duvar_takip();
-
+  if(digitalRead(tokatlama_sayac_dolma_sinyali) == 1)
+  {
+    digitalWrite(tokatlama_kilitleme_sinyali, HIGH);
+    duvar_takip();
+  }
+  else
+  {
+    rastgele();
+  }
 }
 
 // ******************  RASTGELE FONKSİYONU  ****************************
@@ -356,7 +366,6 @@ void soldan_park()
   }
 }
 
-
 void sagdan_park()
 {
   // *** fren ***
@@ -448,8 +457,6 @@ void duvar_takip()
           if (kirmizi < mavi && (noFilter - baslangicNoFilter) > 20) {
             //KIRMIZI BÖLGE
             soldan_park();
-          } else if (mavi < kirmizi && (noFilter - baslangicNoFilter) > 20) {
-            soldan_park();
           }
           saga_ilerle();
           delay(200);
@@ -497,9 +504,6 @@ void duvar_takip()
           olcum();
           if (kirmizi < mavi && (noFilter - baslangicNoFilter) > 20) {
             //KIRMIZI BÖLGE
-            sagdan_park();
-          } else if (mavi < kirmizi && (noFilter - baslangicNoFilter) > 20) {
-            //MAVİ BÖLGE
             sagdan_park();
           }
           analogWrite(enA, 0);
