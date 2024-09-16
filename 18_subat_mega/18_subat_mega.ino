@@ -32,8 +32,17 @@ int enKucukKirmizi = 50, enBuyukKirmizi = 50,
 int sol_goz_durum = 0;
 
 int baslangicNoFilter = 0;
-int tokatlama_sayac_dolma_sinyali = 53;
-int tokatlama_kilitleme_sinyali = 52;
+
+int bolge_sinyali = A15;
+int sayac_bildirim = A14;
+int ceza_bildirim = A13;
+int kilit_sinyali = A12;
+
+int renk_switch = 44;
+int rgb1 = 48;
+int rgb2 = 50;
+
+int bolge = 0;//DEFAULT MAVİ
 
 void setup() {
   pinMode(in1, OUTPUT);
@@ -49,35 +58,65 @@ void setup() {
   pinMode(s1, OUTPUT);
   pinMode(s2, OUTPUT);
   pinMode(s3, OUTPUT);
-  pinMode(tokatlama_kilitleme_sinyali, OUTPUT);
-  pinMode(tokatlama_sayac_dolma_sinyali, INPUT);
+  pinMode(bolge_sinyali, OUTPUT);
+  pinMode(kilit_sinyali, OUTPUT);
+  pinMode(rgb1, OUTPUT);
+  pinMode(rgb2, OUTPUT);
+  pinMode(renk_switch, INPUT);
+  pinMode(sayac_bildirim, INPUT);
+  pinMode(ceza_bildirim, INPUT);
   pinMode(out, INPUT);
   Serial.begin(9600);
-  
+
+  if (digitalRead(renk_switch) == 0)
+  {
+    //rengimiz mavi
+    digitalWrite(rgb1, LOW);
+    digitalWrite(rgb2, HIGH);
+    digitalWrite(bolge_sinyali, LOW);
+  }
+  else
+  {
+    //rengimiz kırmızı
+    digitalWrite(rgb1, HIGH);
+    digitalWrite(rgb2, LOW);
+    digitalWrite(bolge_sinyali, HIGH);
+    bolge = 1; //BÖLGEMİZ KIRMIZI
+  }
+
   ceza.attach(10);
   rakip_bolge.attach(11);
   bizim_bolge.attach(12);
-  ceza.write(1);
-  rakip_bolge.write(1);
-  bizim_bolge.write(1);
+  ceza.write(180);
+  rakip_bolge.write(180);
+  bizim_bolge.write(180);
 
-  digitalWrite(tokatlama_kilitleme_sinyali, LOW);
+  digitalWrite(kilit_sinyali, LOW);
 
   olcum();
   baslangicNoFilter = noFilter;
-
+/*
   while (digitalRead(sag_goz) == 0) // SAĞ GÖZDE ENGEL VAR İSE (YANİ BALŞANGIÇTA) HAREKET ETMEYECEK
-  {}
+  {}*/
   digitalWrite(s0, HIGH);
   digitalWrite(s1, LOW);
 }
 
 void loop()
 {
-  if(digitalRead(tokatlama_sayac_dolma_sinyali) == 1)
+  Serial.println(digitalRead(sayac_bildirim));
+  Serial.println(digitalRead(ceza_bildirim));
+  if (digitalRead(sayac_bildirim)) //KENDİ TOPUMUZUN SAYACI DOLMUŞ
   {
-    digitalWrite(tokatlama_kilitleme_sinyali, HIGH);
-    duvar_takip();
+    //DUVAR TAKİBİ VE KENDİ BÖLGEMİZE BOŞALTMA
+    digitalWrite(kilit_sinyali, HIGH);
+    duvar_takip(1);
+  }
+  else if (digitalRead(ceza_bildirim)) //CEZA TOPLADIK
+  {
+    //DUVAR TAKİBİ VE RAKİP BÖLGEYE BOŞALTMA
+    digitalWrite(kilit_sinyali, HIGH);
+    duvar_takip(0);
   }
   else
   {
@@ -148,128 +187,12 @@ void rastgele()
 
 }
 
-void kalibre () {
-  //Loop kısmında bu kod olacak
-  /*
-    long firstTime = millis();
-    while( (millis() - firstTime) <= 15000)
-    {
-    kalibre();
-    }
-    Serial.println("Değişim yapın...");
-    delay(5000);
-    firstTime = millis();
-    while( (millis() - firstTime) <= 15000)
-    {
-    kalibre();
-    }
-    Serial.print("Kırmızı Aralık : map(kirmizi, ");
-    Serial.print(enKucukKirmizi);
-    Serial.print(", ");
-    Serial.print(enBuyukKirmizi);
-    Serial.println(", 0, 100);");
-    Serial.print("Mavi Aralık : map(mavi, ");
-    Serial.print(enKucukMavi);
-    Serial.print(", ");
-    Serial.print(enBuyukMavi);
-    Serial.println(", 0, 100);");
-    Serial.print("Yeşil Aralık : map(yesil, ");
-    Serial.print(enKucukYesil);
-    Serial.print(", ");
-    Serial.print(enBuyukYesil);
-    Serial.println(", 0, 100);");
-    Serial.print("Filtresiz Aralık : map(noFilter, ");
-    Serial.print(enKucukFiltresiz);
-    Serial.print(", ");
-    Serial.print(enBuyukFiltresiz);
-    Serial.println(", 0, 100);");
-    while(true){}
-  */
-
-  //kırmızıyı okuyoruz
-  digitalWrite(s2, LOW);
-  digitalWrite(s3, LOW);
-  delay(50);
-
-  kirmizi = pulseIn(out, LOW);
-
-  Serial.print("Kırmızı: ");
-  Serial.print(kirmizi);
-  Serial.print("\t");
-
-  //maviyi okuyoruz
-  digitalWrite(s2, LOW);
-  digitalWrite(s3, HIGH);
-  delay(50);
-
-  mavi = pulseIn(out, LOW);
-
-  Serial.print("Mavi: ");
-  Serial.print(mavi);
-  Serial.print("\t");
-
-  //yeşili okuyoruz
-  digitalWrite(s2, HIGH);
-  digitalWrite(s3, HIGH);
-  delay(50);
-
-  yesil = pulseIn(out, LOW);
-
-  Serial.print("Yeşil: ");
-  Serial.print(yesil);
-  Serial.print("\t");
-
-  //filtresiz okuyoruz
-  digitalWrite(s2, HIGH);
-  digitalWrite(s3, LOW);
-  delay(50);
-
-  noFilter = pulseIn(out, LOW);
-
-  Serial.print("Filtresiz: ");
-  Serial.println(noFilter);
-
-  if (kirmizi < enKucukKirmizi)
-  {
-    enKucukKirmizi = kirmizi;
-  }
-  if (kirmizi > enBuyukKirmizi)
-  {
-    enBuyukKirmizi = kirmizi;
-  }
-  if (mavi < enKucukMavi)
-  {
-    enKucukMavi = mavi;
-  }
-  if (mavi > enBuyukMavi)
-  {
-    enBuyukMavi = mavi;
-  }
-  if (yesil < enKucukYesil)
-  {
-    enKucukYesil = yesil;
-  }
-  if (yesil > enBuyukYesil)
-  {
-    enBuyukYesil = yesil;
-  }
-  if (noFilter < enKucukFiltresiz)
-  {
-    enKucukFiltresiz = noFilter;
-  }
-  if (noFilter > enBuyukFiltresiz)
-  {
-    enBuyukFiltresiz = noFilter;
-  }
-}
-
 void olcum() {
   digitalWrite(s2, LOW);
   digitalWrite(s3, LOW);
   delay(10);
 
   kirmizi = pulseIn(out, LOW);
-  kirmizi = map(kirmizi, 21, 207, 0, 100);
 
   //maviyi okuyoruz
   digitalWrite(s2, LOW);
@@ -277,8 +200,6 @@ void olcum() {
   delay(10);
 
   mavi = pulseIn(out, LOW);
-  mavi = map(mavi, 6, 187, 0, 100);
-
 
   //yeşili okuyoruz
   digitalWrite(s2, HIGH);
@@ -286,8 +207,6 @@ void olcum() {
   delay(10);
 
   yesil = pulseIn(out, LOW);
-  yesil = map(yesil, 22, 246, 0, 100);
-
 
   //Filtresiz okuyoruz
   digitalWrite(s2, HIGH);
@@ -295,8 +214,6 @@ void olcum() {
   delay(10);
 
   noFilter = pulseIn(out, LOW);
-  noFilter = map(noFilter, 8, 68, 0, 100);
-
 
   Serial.print("KIRMIZI: ");
   Serial.print(kirmizi);
@@ -324,7 +241,7 @@ boolean aralik_sorgu(int kk, int kb, int mk, int mb, int yk, int yb, int fk, int
 }
 
 // ******************  FONKSİYONLAR BAŞLIYOR ****************************
-void soldan_park()
+void soldan_park(int nereye) //nereye 1se kendi bölgemin kapağı 0sa rakibe gidiyorum cezanın kapağı
 {
   // *** fren ***
   dur();
@@ -361,16 +278,26 @@ void soldan_park()
   // *** Bırakma hareketi için ileri ***
   ileri();
   //KAPAK AÇILIR
-  //bizim_bolge.write(80);
-  delay(1750);
+  if (nereye) //KENDİ BÖLGEME GİTTİYSEM
+  {
+    bizim_bolge.write(180);
+    delay(1750);
+    bizim_bolge.write(0);
+  }
+  else
+  {
+    ceza.write(180);
+    delay(1750);
+    ceza.write(0);
+  }
+
   while (1)
   {
     dur();
-    //bizim_bolge.write(1);
   }
 }
 
-void sagdan_park()
+void sagdan_park(int nereye)
 {
   // *** fren ***
   dur();
@@ -407,17 +334,25 @@ void sagdan_park()
   // *** Bırakma hareketi için ileri ***
   ileri();
   //KAPAK AÇILIR
-  //bizim_bolge.write(80);
-  delay(1750);
+  if (nereye) //KENDİ BÖLGEME GİTTİYSEM
+  {
+    bizim_bolge.write(180);
+    delay(1750);
+    bizim_bolge.write(0);
+  }
+  else
+  {
+    ceza.write(180);
+    delay(1750);
+    ceza.write(0);
+  }
   while (1)
   {
     dur();
-    //bizim_bolge.write(1);
   }
 }
 
-
-void duvar_takip()
+void duvar_takip(int nereye) //NEREYE 1SE KENDİ BÖLGEME 0SA RAKİBE
 {
   if (digitalRead(on_goz) == 0)
   {
@@ -458,9 +393,15 @@ void duvar_takip()
           dur();
           delay(300);
           olcum();
-          if (kirmizi < mavi && (noFilter - baslangicNoFilter) > 20) {
+          if ( (kirmizi < mavi && (noFilter - baslangicNoFilter) > 20) && (nereye == bolge) ) // (nereye == 1 && bolge == 1) || (nereye == 0 && bolge == 0)
+          {
             //KIRMIZI BÖLGE
-            soldan_park();
+            soldan_park(nereye);
+          }
+          else if ( (mavi < kirmizi && (noFilter - baslangicNoFilter) > 20) && (nereye != bolge) )
+          {
+            //MAVİ BÖLGE
+            soldan_park(nereye);
           }
           saga_ilerle();
           delay(200);
@@ -505,17 +446,23 @@ void duvar_takip()
           //KÖŞEDEYİZ
           dur();
           delay(100);
-          olcum();
-          if (kirmizi < mavi && (noFilter - baslangicNoFilter) > 20) {
-            //KIRMIZI BÖLGE
-            sagdan_park();
-          }
           analogWrite(enA, 0);
           analogWrite(enB, 160);
           geri();
           delay(700);
-          sola_ilerle();
-          delay(200);
+          dur();
+          delay(300);
+          olcum();
+          if ( (kirmizi < mavi && (noFilter - baslangicNoFilter) > 20) && (nereye == bolge) ) // (nereye == 1 && bolge == 1) || (nereye == 0 && bolge == 0)
+          {
+            //KIRMIZI BÖLGE
+            sagdan_park(nereye);
+          }
+          else if ( (mavi < kirmizi && (noFilter - baslangicNoFilter) > 20) && (nereye != bolge) )
+          {
+            //MAVİ BÖLGE
+            sagdan_park(nereye);
+          }
         }
         else
         {

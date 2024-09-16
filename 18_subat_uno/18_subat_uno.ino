@@ -7,7 +7,7 @@ Servo ust_kapak;
 #define out 8
 #define s0 9
 #define s1 10
-#define s2 11 
+#define s2 11
 #define s3 12
 
 int kirmizi, yesil, mavi, noFilter;
@@ -23,10 +23,15 @@ int yesil_veriler[7] = {0, 0, 0, 0, 0, 0, 0};
 int noFilter_veriler[7] = {0, 0, 0, 0, 0, 0, 0};
 
 int baslangicNoFilter = 0, dogru_sayac = 0, rakip_sayac = 0;
-int sayac_bildir = A0;
-int sayac_geri_bildirim = A1;
+int bolge_bildirim = A2;
+int sayac_sinyali = A3;
+int ceza_sinyali = A4;
+int kilit_bildirim = A5;
+
+int bolge = 0;
 
 void setup() {
+  delay(500);
   arka_sol_kapak.attach(3);
   arka_sag_kapak.attach(5);
   ust_kapak.attach(6);
@@ -35,14 +40,22 @@ void setup() {
   pinMode(s1, OUTPUT);
   pinMode(s2, OUTPUT);
   pinMode(s3, OUTPUT);
-  pinMode(sayac_bildir, OUTPUT);
+  pinMode(sayac_sinyali, OUTPUT);
+  pinMode(ceza_sinyali, OUTPUT);
   //sensör çıkış pininden bilgi alıyoruz
   pinMode(out, INPUT);
-  pinMode(sayac_geri_bildirim, INPUT);
+  pinMode(kilit_bildirim, INPUT);
+  pinMode(bolge_bildirim, INPUT);
+
+  if (digitalRead(bolge_bildirim))
+  {
+    bolge = 1;
+  }
 
   digitalWrite(s0, HIGH);
   digitalWrite(s1, LOW);
-  digitalWrite(A0, LOW);
+  digitalWrite(sayac_sinyali, LOW);
+  digitalWrite(ceza_sinyali, LOW);
 
   Serial.begin(9600);
 
@@ -65,44 +78,8 @@ void setup() {
 
 void loop()
 {
-  /*
-    long firstTime = millis();
-    while( (millis() - firstTime) <= 15000)
-    {
-    kalibre();
-    }
-    Serial.println("Değişim yapın...");
-    delay(5000);
-    firstTime = millis();
-    while( (millis() - firstTime) <= 15000)
-    {
-    kalibre();
-    }
-    Serial.print("Kırmızı Aralık : map(kirmizi, ");
-    Serial.print(enKucukKirmizi);
-    Serial.print(", ");
-    Serial.print(enBuyukKirmizi);
-    Serial.println(", 0, 100);");
-    Serial.print("Mavi Aralık : map(mavi, ");
-    Serial.print(enKucukMavi);
-    Serial.print(", ");
-    Serial.print(enBuyukMavi);
-    Serial.println(", 0, 100);");
-    Serial.print("Yeşil Aralık : map(yesil, ");
-    Serial.print(enKucukYesil);
-    Serial.print(", ");
-    Serial.print(enBuyukYesil);
-    Serial.println(", 0, 100);");
-    Serial.print("Filtresiz Aralık : map(noFilter, ");
-    Serial.print(enKucukFiltresiz);
-    Serial.print(", ");
-    Serial.print(enBuyukFiltresiz);
-    Serial.println(", 0, 100);");
-    while(true){}
-  */
-
-  olcum();
   //verileri güncelliyoruz
+  olcum();
 
   //verileri 1 geri kaydırıyoruz
   for (int i = 0; i < 6; i++)
@@ -138,26 +115,33 @@ void loop()
   Serial.println(noFilter);
 
 
-  if ( yuzdeSorgu(mavi, kirmizi, 180, 280, "mavi / kirmizi = ") && top_var_mi() )
+  if ( yuzde_sorgu(mavi, kirmizi, 250, 400, "m/k: ") && top_var_mi() )
   {
     //KIRMIZI TOP ALGILADIK
     Serial.println("Kırmızı");
 
-    dogru_al();
-    dogru_sayac++;
-    if (dogru_sayac == 3)
+    if (bolge) //BÖLGEMİZ KIRMIZI
     {
-      digitalWrite(sayac_bildir, HIGH);
-      delay(3000);
-      while (digitalRead(sayac_geri_bildirim) == 1)
-      {
-        
-      }
-      dogru_sayac = 0;
+      dogru_al();
+      dogru_sayac++;
+    }
+    else //BÖLGEMİZ MAVİ
+    {
+      rakip_al();
     }
 
     //eğer sayac dolmuşsa sinyal gönder
     //while'a girilecek mega işini bitirip sinyal gönderene kadar bu while'dan çıkılamayacak
+    if (dogru_sayac == 3)
+    {
+      digitalWrite(sayac_sinyali, HIGH);
+      delay(3000);
+      while (digitalRead(kilit_bildirim) == 1)
+      {
+
+      }
+      dogru_sayac = 0;
+    }
 
     //renk sensörü hala kırmızı algılamasın diye verileri güncelliyoruz
     for (int i = 1; i < 7; i++) {
@@ -170,12 +154,31 @@ void loop()
     }
 
   }
-  else if ( yuzdeSorgu(kirmizi, mavi, 170, 230, "kirmizi / mavi = ") && top_var_mi() )
+  else if ( (kirmizi - mavi) > 20 && top_var_mi() )
   {
     //MAVİ TOP ALGILADIK
     Serial.println("Mavi");
 
-    rakip_al();
+    if (bolge) //BÖLGEMİZ KIRMIZI
+    {
+      rakip_al();
+    }
+    else //BÖLGEMİZ MAVİ
+    {
+      dogru_al();
+      dogru_sayac++;
+    }
+
+    if (dogru_sayac == 3)
+    {
+      digitalWrite(sayac_sinyali, HIGH);
+      delay(3000);
+      while (digitalRead(kilit_bildirim) == 1)
+      {
+
+      }
+      dogru_sayac = 0;
+    }
 
     //renk sensörü hala mavi algılamasın diye verileri güncelliyoruz
     for (int i = 1; i < 7; i++) {
@@ -186,13 +189,22 @@ void loop()
       noFilter_veriler[i] = noFilter;
       delay(40);
     }
+
   }
-  else if ( yuzdeSorgu(mavi, kirmizi, 80, 170, "mavi / kirmizi = ") && top_var_mi() )
+  else if ( yuzde_sorgu(mavi, kirmizi, 125, 140, "m/k: ") && top_var_mi() )
   {
     //CEZA YUMURTASI ALGILADIK
     Serial.println("Ceza");
+
     ceza_al();
-    //direkt megaya sinyal gönder ve terkrar while'a girilir
+
+    //direkt megaya sinyal gönder ve tekrar while'a girilir
+    digitalWrite(ceza_sinyali, HIGH);
+    delay(3000);
+    while (digitalRead(kilit_bildirim) == 1)
+    {
+
+    }
 
     //renk sensörü hala ceza algılamasın diye verileri güncelliyoruz
     for (int i = 1; i < 7; i++) {
@@ -209,123 +221,8 @@ void loop()
     Serial.println("Boşş");
   }
 
-  delay(300);
+  delay(20);
 
-}
-
-void kalibre () {
-  //Loop kısmında bu kod olacak
-  /*
-    long firstTime = millis();
-    while( (millis() - firstTime) <= 15000)
-    {
-    kalibre();
-    }
-    Serial.println("Değişim yapın...");
-    delay(5000);
-    firstTime = millis();
-    while( (millis() - firstTime) <= 15000)
-    {
-    kalibre();
-    }
-    Serial.print("Kırmızı Aralık : map(kirmizi, ");
-    Serial.print(enKucukKirmizi);
-    Serial.print(", ");
-    Serial.print(enBuyukKirmizi);
-    Serial.println(", 0, 100);");
-    Serial.print("Mavi Aralık : map(mavi, ");
-    Serial.print(enKucukMavi);
-    Serial.print(", ");
-    Serial.print(enBuyukMavi);
-    Serial.println(", 0, 100);");
-    Serial.print("Yeşil Aralık : map(yesil, ");
-    Serial.print(enKucukYesil);
-    Serial.print(", ");
-    Serial.print(enBuyukYesil);
-    Serial.println(", 0, 100);");
-    Serial.print("Filtresiz Aralık : map(noFilter, ");
-    Serial.print(enKucukFiltresiz);
-    Serial.print(", ");
-    Serial.print(enBuyukFiltresiz);
-    Serial.println(", 0, 100);");
-    while(true){}
-  */
-
-  //kırmızıyı okuyoruz
-  digitalWrite(s2, LOW);
-  digitalWrite(s3, LOW);
-  delay(50);
-
-  kirmizi = pulseIn(out, LOW);
-
-  Serial.print("Kırmızı: ");
-  Serial.print(kirmizi);
-  Serial.print("\t");
-
-  //maviyi okuyoruz
-  digitalWrite(s2, LOW);
-  digitalWrite(s3, HIGH);
-  delay(50);
-
-  mavi = pulseIn(out, LOW);
-
-  Serial.print("Mavi: ");
-  Serial.print(mavi);
-  Serial.print("\t");
-
-  //yeşili okuyoruz
-  digitalWrite(s2, HIGH);
-  digitalWrite(s3, HIGH);
-  delay(50);
-
-  yesil = pulseIn(out, LOW);
-
-  Serial.print("Yeşil: ");
-  Serial.print(yesil);
-  Serial.print("\t");
-
-  //filtresiz okuyoruz
-  digitalWrite(s2, HIGH);
-  digitalWrite(s3, LOW);
-  delay(50);
-
-  noFilter = pulseIn(out, LOW);
-
-  Serial.print("Filtresiz: ");
-  Serial.println(noFilter);
-
-  if (kirmizi < enKucukKirmizi)
-  {
-    enKucukKirmizi = kirmizi;
-  }
-  if (kirmizi > enBuyukKirmizi)
-  {
-    enBuyukKirmizi = kirmizi;
-  }
-  if (mavi < enKucukMavi)
-  {
-    enKucukMavi = mavi;
-  }
-  if (mavi > enBuyukMavi)
-  {
-    enBuyukMavi = mavi;
-  }
-  if (yesil < enKucukYesil)
-  {
-    enKucukYesil = yesil;
-  }
-  if (yesil > enBuyukYesil)
-  {
-    enBuyukYesil = yesil;
-  }
-  if (noFilter < enKucukFiltresiz)
-  {
-    enKucukFiltresiz = noFilter;
-  }
-  if (noFilter > enBuyukFiltresiz)
-  {
-    enBuyukFiltresiz = noFilter;
-  }
 }
 
 void olcum()
@@ -335,8 +232,6 @@ void olcum()
   delay(10);
 
   kirmizi = pulseIn(out, LOW);
-  //kirmizi = map(kirmizi, 24, 354, 0, 100);
-
 
   //maviyi okuyoruz
   digitalWrite(s2, LOW);
@@ -344,17 +239,6 @@ void olcum()
   delay(10);
 
   mavi = pulseIn(out, LOW);
-  //mavi = map(mavi, 22, 323, 0, 100);
-
-
-  //yeşili okuyoruz
-  digitalWrite(s2, HIGH);
-  digitalWrite(s3, HIGH);
-  delay(10);
-
-  yesil = pulseIn(out, LOW);
-  //yesil = map(yesil, 23, 405, 0, 100);
-
 
   //Filtresiz okuyoruz
   digitalWrite(s2, HIGH);
@@ -362,24 +246,6 @@ void olcum()
   delay(10);
 
   noFilter = pulseIn(out, LOW);
-  //noFilter = map(noFilter, 8, 122, 0, 100);
-
-  /*
-    Serial.print("KIRMIZI: ");
-    Serial.print(kirmizi);
-    Serial.print(" ");
-
-    Serial.print("MAVİ: ");
-    Serial.print(mavi);
-    Serial.print(" ");
-
-    Serial.print("YEŞİL: ");
-    Serial.print(yesil);
-    Serial.print(" ");
-
-    Serial.print("FİLTRESİZ: ");
-    Serial.println(noFilter);*/
-
 }
 
 void dogru_veri_al() {
@@ -483,7 +349,7 @@ boolean aralik_sorgu(int kk, int kb, int mk, int mb, int yk, int yb, int fk, int
            && (noFilter >= fk) && (noFilter <= fb) );
 }
 
-boolean yuzdeSorgu(int buyukDegisken, int kucukDegisken, int kucuk, int buyuk, String mesaj) {
+boolean yuzde_sorgu(int buyukDegisken, int kucukDegisken, int kucuk, int buyuk, String mesaj) {
   float yuzde = ((float)buyukDegisken / (float)kucukDegisken) * 100;
   Serial.print(mesaj);
   Serial.println(yuzde);
@@ -495,7 +361,7 @@ boolean top_var_mi()
   float yuzde = ((float)noFilter / (float)baslangicNoFilter) * 100;
   Serial.print("filtre oranı: ");
   Serial.println(yuzde);
-  return (yuzde >= 120) && (yuzde <= 220);
+  return (yuzde > 150);
 }
 
 boolean ceza_sorgu() {
