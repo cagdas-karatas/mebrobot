@@ -4,11 +4,11 @@ Servo arka_sol_kapak;
 Servo arka_sag_kapak;
 Servo ust_kapak;
 
-#define out 7 // beyaz
-#define s0 8  // sarı
-#define s1 9  // turuncu
-#define s2 10 // yeşil 
-#define s3 11 // mavi
+#define out 8
+#define s0 9
+#define s1 10
+#define s2 11 
+#define s3 12
 
 int kirmizi, yesil, mavi, noFilter;
 

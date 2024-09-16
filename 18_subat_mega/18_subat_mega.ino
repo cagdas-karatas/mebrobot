@@ -1,6 +1,7 @@
 #include <Servo.h>
 Servo bizim_bolge;
-Servo tokatlama;
+Servo rakip_bolge;
+Servo ceza;
 
 const int in1 = 3;
 const int in2 = 4;
@@ -8,16 +9,16 @@ const int in3 = 5;
 const int in4 = 6;
 const int enA = 2;
 const int enB = 7;
-const int sol_goz = 32;
-const int on_goz = 31;
-const int sag_goz = 30;
+const int sol_goz = 26;
+const int on_goz = 24;
+const int sag_goz = 22;
 
 // ****** BÖLGE BULAN RENK SENSÖRÜ ******
-#define s0 22 //Mavi
-#define s1 23 //Sarı
-#define s2 24 //Yeşil
-#define s3 25 //Mor
-#define out 26 //Turuncu
+#define s0 36 //Mavi
+#define s1 38 //Sarı
+#define s2 40 //Yeşil
+#define s3 42 //Mor
+#define out 34 //Turuncu
 // VCC Kırmızı
 // GND Beyaz
 
@@ -52,10 +53,13 @@ void setup() {
   pinMode(tokatlama_sayac_dolma_sinyali, INPUT);
   pinMode(out, INPUT);
   Serial.begin(9600);
-  bizim_bolge.attach(9);
+  
+  ceza.attach(10);
+  rakip_bolge.attach(11);
+  bizim_bolge.attach(12);
+  ceza.write(1);
+  rakip_bolge.write(1);
   bizim_bolge.write(1);
-  //tokatlama.attach(8);
-  //tokatlama.write(1);
 
   digitalWrite(tokatlama_kilitleme_sinyali, LOW);
 
