@@ -10,23 +10,16 @@ Servo ust_kapak;
 #define s2 11
 #define s3 12
 
-int kirmizi, yesil, mavi, noFilter;
+int kirmizi, mavi, noFilter;
+int kirmizi_veriler[5] = { 0, 0, 0, 0, 0 };
+int mavi_veriler[5] = { 0, 0, 0, 0, 0 };
 
-int enKucukKirmizi = 50, enBuyukKirmizi = 50,
-    enKucukYesil = 50, enBuyukYesil = 50,
-    enKucukMavi = 50, enBuyukMavi = 50,
-    enKucukFiltresiz = 50, enBuyukFiltresiz = 50;
-
-int kirmizi_veriler[7] = {0, 0, 0, 0, 0, 0, 0};
-int mavi_veriler[7] = {0, 0, 0, 0, 0, 0, 0};
-int yesil_veriler[7] = {0, 0, 0, 0, 0, 0, 0};
-int noFilter_veriler[7] = {0, 0, 0, 0, 0, 0, 0};
-
-int baslangicNoFilter = 0, dogru_sayac = 0, rakip_sayac = 0;
+int dogru_sayac = 0, rakip_sayac = 0;
 int bolge_bildirim = A2;
 int sayac_sinyali = A3;
 int ceza_sinyali = A4;
 int kilit_bildirim = A5;
+int top_sensoru = 13;
 
 int bolge = 0;
 
@@ -42,13 +35,14 @@ void setup() {
   pinMode(s3, OUTPUT);
   pinMode(sayac_sinyali, OUTPUT);
   pinMode(ceza_sinyali, OUTPUT);
-  //sensör çıkış pininden bilgi alıyoruz
+  pinMode(top_sensoru, INPUT);
   pinMode(out, INPUT);
   pinMode(kilit_bildirim, INPUT);
   pinMode(bolge_bildirim, INPUT);
 
-  if (digitalRead(bolge_bildirim))
-  {
+  //MEGADAN GELEN BÖLGE BİLDİRİMİ
+  
+  if (digitalRead(bolge_bildirim)) {
     bolge = 1;
   }
 
@@ -59,45 +53,27 @@ void setup() {
 
   Serial.begin(9600);
 
+  //SERVOLAR AYARLANIYOR
   baslangic();
 
-  delay(2000);
-  for (int i = 0; i < 7; i++)
-  {
+  for (int i = 0; i < 5; i++) {
     olcum();
     kirmizi_veriler[i] = kirmizi;
     mavi_veriler[i] = mavi;
-    yesil_veriler[i] = yesil;
-    noFilter_veriler[i] = noFilter;
   }
-
-  dogru_veri_al();
-
-  baslangicNoFilter = noFilter;
 }
 
-void loop()
-{
+void loop() {
   //verileri güncelliyoruz
-  olcum();
-
-  //verileri 1 geri kaydırıyoruz
-  for (int i = 0; i < 6; i++)
-  {
-    kirmizi_veriler[i] = kirmizi_veriler[i + 1];
-    mavi_veriler[i] = mavi_veriler[i + 1];
-    yesil_veriler[i] = yesil_veriler[i + 1];
-    noFilter_veriler[i] = noFilter_veriler[i + 1];
+  for (int i = 0; i < 5; i++) {
+    olcum();
+    kirmizi_veriler[i] = kirmizi;
+    mavi_veriler[i] = mavi;
+    delay(40);
   }
 
-  //en son gelen veriyi son elemanlara yolluyoruz
-  kirmizi_veriler[6] = kirmizi;
-  mavi_veriler[6] = mavi;
-  yesil_veriler[6] = yesil;
-  noFilter_veriler[6] = noFilter;
-
-  //bütün diziler içindeki en çok tekrar eden değerler benim kirmizi, mavi, yesil ve noFilter değişkenlerime atanır
-  dogru_veri_al();
+  kirmizi = stabilSonucuBul(kirmizi_veriler, 5);
+  mavi = stabilSonucuBul(mavi_veriler, 5);
 
   Serial.print("KIRMIZI: ");
   Serial.print(kirmizi);
@@ -107,31 +83,37 @@ void loop()
   Serial.print(mavi);
   Serial.print(" ");
 
-  Serial.print("YEŞİL: ");
-  Serial.print(yesil);
-  Serial.print(" ");
+  Serial.print("Top var mı: ");
+  Serial.println(digitalRead(top_sensoru));
 
-  Serial.print("FİLTRESİZ: ");
-  Serial.println(noFilter);
-
-
-  if ( yuzde_sorgu(mavi, kirmizi, 250, 400, "m/k: ") && top_var_mi() )
+  if (yuzde_sorgu(mavi, kirmizi, 160, 400, "m/k: ") && top_var_mi()) //KIRMIZI İÇİN
   {
-    //KIRMIZI TOP ALGILADIK
-    Serial.println("Kırmızı");
-
-    if (bolge) //BÖLGEMİZ KIRMIZI
-    {
-      dogru_al();
-      dogru_sayac++;
-    }
-    else //BÖLGEMİZ MAVİ
-    {
-      rakip_al();
+    //EMİN OLMA ÖLÇÜMÜ
+    for (int i = 0; i < 5; i++) {
+      olcum();
+      kirmizi_veriler[i] = kirmizi;
+      mavi_veriler[i] = mavi;
     }
 
-    //eğer sayac dolmuşsa sinyal gönder
-    //while'a girilecek mega işini bitirip sinyal gönderene kadar bu while'dan çıkılamayacak
+    kirmizi = stabilSonucuBul(kirmizi_veriler, 5);
+    mavi = stabilSonucuBul(mavi_veriler, 5);
+
+    if (yuzde_sorgu(mavi, kirmizi, 160, 400, "m/k: ") && top_var_mi()) {
+      //KIRMIZI TOP ALGILADIK
+      Serial.println("Kırmızı");
+
+      if (bolge) //BÖLGEMİZ KIRMIZI
+      {
+        dogru_al();
+        dogru_sayac++;
+      } else  //BÖLGEMİZ MAVİ
+      {
+        rakip_al();
+      }
+
+      //eğer sayac dolmuşsa sinyal gönder
+      //while'a girilecek mega işini bitirip sinyal gönderene kadar bu while'dan çıkılamayacak
+      /*
     if (dogru_sayac == 3)
     {
       digitalWrite(sayac_sinyali, HIGH);
@@ -141,34 +123,44 @@ void loop()
 
       }
       dogru_sayac = 0;
-    }
+    }*/
 
-    //renk sensörü hala kırmızı algılamasın diye verileri güncelliyoruz
-    for (int i = 1; i < 7; i++) {
-      olcum();
-      kirmizi_veriler[i] = kirmizi;
-      mavi_veriler[i] = mavi;
-      yesil_veriler[i] = yesil;
-      noFilter_veriler[i] = noFilter;
-      delay(40);
+      //renk sensörü hala kırmızı algılamasın diye verileri güncelliyoruz
+      for (int i = 1; i < 7; i++) {
+        olcum();
+        kirmizi_veriler[i] = kirmizi;
+        mavi_veriler[i] = mavi;
+        delay(40);
+      }
     }
 
   }
-  else if ( (kirmizi - mavi) > 20 && top_var_mi() )
+  else if (yuzde_sorgu(mavi, kirmizi, 30, 80, "") && top_var_mi()) //MAVİ İÇİN
   {
-    //MAVİ TOP ALGILADIK
-    Serial.println("Mavi");
-
-    if (bolge) //BÖLGEMİZ KIRMIZI
-    {
-      rakip_al();
-    }
-    else //BÖLGEMİZ MAVİ
-    {
-      dogru_al();
-      dogru_sayac++;
+    //EMİN OLMA ÖLÇÜMÜ
+    for (int i = 0; i < 5; i++) {
+      olcum();
+      kirmizi_veriler[i] = kirmizi;
+      mavi_veriler[i] = mavi;
     }
 
+    kirmizi = stabilSonucuBul(kirmizi_veriler, 5);
+    mavi = stabilSonucuBul(mavi_veriler, 5);
+
+    if (yuzde_sorgu(mavi, kirmizi, 30, 80, "") && top_var_mi()) {
+      //MAVİ TOP ALGILADIK
+      Serial.println("Mavi");
+
+      if (bolge)  //BÖLGEMİZ KIRMIZI
+      {
+        rakip_al();
+      } else  //BÖLGEMİZ MAVİ
+      {
+        dogru_al();
+        dogru_sayac++;
+      }
+
+      /*
     if (dogru_sayac == 3)
     {
       digitalWrite(sayac_sinyali, HIGH);
@@ -178,143 +170,84 @@ void loop()
 
       }
       dogru_sayac = 0;
-    }
+    }*/
 
-    //renk sensörü hala mavi algılamasın diye verileri güncelliyoruz
-    for (int i = 1; i < 7; i++) {
-      olcum();
-      kirmizi_veriler[i] = kirmizi;
-      mavi_veriler[i] = mavi;
-      yesil_veriler[i] = yesil;
-      noFilter_veriler[i] = noFilter;
-      delay(40);
+      //renk sensörü hala mavi algılamasın diye verileri güncelliyoruz
+      for (int i = 1; i < 7; i++) {
+        olcum();
+        kirmizi_veriler[i] = kirmizi;
+        mavi_veriler[i] = mavi;
+        delay(40);
+      }
     }
 
   }
-  else if ( yuzde_sorgu(mavi, kirmizi, 125, 140, "m/k: ") && top_var_mi() )
+  else if (top_var_mi()) //CEZA İÇİN
   {
-    //CEZA YUMURTASI ALGILADIK
-    Serial.println("Ceza");
+    //EMİN OLMA ÖLÇÜMÜ
+    for (int i = 0; i < 5; i++) {
+      olcum();
+      kirmizi_veriler[i] = kirmizi;
+      mavi_veriler[i] = mavi;
+    }
 
-    ceza_al();
+    kirmizi = stabilSonucuBul(kirmizi_veriler, 5);
+    mavi = stabilSonucuBul(mavi_veriler, 5);
 
+    if (!yuzde_sorgu(mavi, kirmizi, 160, 400, "") && !yuzde_sorgu(mavi, kirmizi, 30, 80, "") && top_var_mi()) {
+      //CEZA YUMURTASI ALGILADIK
+      Serial.println("Ceza");
+
+      ceza_al();
+      /*
     //direkt megaya sinyal gönder ve tekrar while'a girilir
     digitalWrite(ceza_sinyali, HIGH);
     delay(3000);
     while (digitalRead(kilit_bildirim) == 1)
     {
 
+    }*/
+
+      //renk sensörü hala ceza algılamasın diye verileri güncelliyoruz
+      for (int i = 1; i < 7; i++) {
+        olcum();
+        kirmizi_veriler[i] = kirmizi;
+        mavi_veriler[i] = mavi;
+        delay(40);
+      }
     }
 
-    //renk sensörü hala ceza algılamasın diye verileri güncelliyoruz
-    for (int i = 1; i < 7; i++) {
-      olcum();
-      kirmizi_veriler[i] = kirmizi;
-      mavi_veriler[i] = mavi;
-      yesil_veriler[i] = yesil;
-      noFilter_veriler[i] = noFilter;
-      delay(40);
-    }
   }
-  else
+  else 
   {
     Serial.println("Boşş");
   }
 
-  delay(20);
-
+  delay(300);
 }
 
-void olcum()
-{
+void olcum() {
   digitalWrite(s2, LOW);
   digitalWrite(s3, LOW);
-  delay(10);
+  delay(20);
 
   kirmizi = pulseIn(out, LOW);
 
   //maviyi okuyoruz
   digitalWrite(s2, LOW);
   digitalWrite(s3, HIGH);
-  delay(10);
+  delay(20);
 
   mavi = pulseIn(out, LOW);
-
-  //Filtresiz okuyoruz
-  digitalWrite(s2, HIGH);
-  digitalWrite(s3, LOW);
-  delay(10);
-
-  noFilter = pulseIn(out, LOW);
 }
 
-void dogru_veri_al() {
-  kirmizi = en_cok_tekrar_eden(kirmizi_veriler);
-  mavi = en_cok_tekrar_eden(mavi_veriler);
-  yesil = en_cok_tekrar_eden(yesil_veriler);
-  noFilter = en_cok_tekrar_eden(noFilter_veriler);
-}
-
-int en_cok_tekrar_eden(int dizi[7])
-{
-  //en çok sayılan değerin ne kadar sayıldığını tutmak için
-  int maxSayac = 0;
-  //işin sonunda geri döndüreceğimiz en çok tekrar edecek sayıyı tutacak değişken
-  int sayi = dizi[0];
-
-  for (int i = 0; i < 7; i++)
-  {
-    //sayının ne kadar tekrar ettiğini tutucaz
-    int sayac = 0;
-
-    //i'deki elemanı kendi dahil tüm elemanlarla karşılaştırıyoruz
-    for (int j = 0; j < 7; j++)
-    {
-      if (dizi[i] == dizi[j])
-      {
-        //eğer eşitlik varsa sayac 1 artırılır
-        sayac++;
-      }
-    }
-
-    //eğer sayac maxSayacı aşmışsa şu ana kadar en çok sayılmış eleman demektir
-    if (sayac > maxSayac)
-    {
-      //en çok sayılan elemanı sayının içine atıyoruz
-      sayi = dizi[i];
-      maxSayac = sayac;
-    }
-  }
-
-  //sayıyı döndürüyoruz
-  return sayi;
-}
-
-void baslangic()
-{
+void baslangic() {
   arka_sol_kapak.write(25);
   arka_sag_kapak.write(140);
   ust_kapak.write(11);
 }
 
-void rakip_al()
-{
-  arka_sag_kapak.write(90);
-  arka_sol_kapak.write(10);
-  delay(100);
-  ust_kapak.write(60);
-  delay(250);
-  ust_kapak.write(0);
-  delay(100);
-  arka_sag_kapak.write(180);
-  delay(200);
-  arka_sol_kapak.write(25);
-  arka_sag_kapak.write(140);
-
-}
-
-void dogru_al()
-{
+void rakip_al() {
   arka_sag_kapak.write(180);
   arka_sol_kapak.write(0);
   delay(100);
@@ -326,8 +259,21 @@ void dogru_al()
   arka_sag_kapak.write(140);
 }
 
-void ceza_al()
-{
+void dogru_al() {
+  arka_sag_kapak.write(90);
+  arka_sol_kapak.write(10);
+  delay(100);
+  ust_kapak.write(60);
+  delay(250);
+  ust_kapak.write(0);
+  delay(100);
+  arka_sag_kapak.write(180);
+  delay(200);
+  arka_sol_kapak.write(25);
+  arka_sag_kapak.write(140);
+}
+
+void ceza_al() {
   arka_sol_kapak.write(70);
   arka_sag_kapak.write(170);
   delay(100);
@@ -341,14 +287,6 @@ void ceza_al()
   arka_sag_kapak.write(140);
 }
 
-boolean aralik_sorgu(int kk, int kb, int mk, int mb, int yk, int yb, int fk, int fb) {
-  return (
-           (kirmizi >= kk) && (kirmizi <= kb)
-           && (mavi >= mk) && (mavi <= mb)
-           && (yesil >= yk) && (yesil <= yb)
-           && (noFilter >= fk) && (noFilter <= fb) );
-}
-
 boolean yuzde_sorgu(int buyukDegisken, int kucukDegisken, int kucuk, int buyuk, String mesaj) {
   float yuzde = ((float)buyukDegisken / (float)kucukDegisken) * 100;
   Serial.print(mesaj);
@@ -356,17 +294,62 @@ boolean yuzde_sorgu(int buyukDegisken, int kucukDegisken, int kucuk, int buyuk, 
   return (yuzde >= kucuk) && (yuzde <= buyuk);
 }
 
-boolean top_var_mi()
-{
-  float yuzde = ((float)noFilter / (float)baslangicNoFilter) * 100;
-  Serial.print("filtre oranı: ");
-  Serial.println(yuzde);
-  return (yuzde > 150);
+boolean top_var_mi() {
+  return (digitalRead(top_sensoru) == 0);
 }
 
-boolean ceza_sorgu() {
-  float yuzde_yesil_noFilter =  ( (float)yesil / (float)noFilter ) * 100;
-  float yuzde_yesil_kirmizi =  ( (float)yesil / (float)kirmizi ) * 100;
-  float yuzde_yesil_mavi =  ( (float)yesil / (float)mavi ) * 100;
-  return (yuzde_yesil_noFilter >= 135) && (yuzde_yesil_noFilter <= 150) && (yuzde_yesil_kirmizi >= 165) && (yuzde_yesil_mavi >= 125);
+
+
+
+
+// Ortalama hesaplayan fonksiyon
+double ortalamaHesapla(const int arr[], int size) {
+  double sum = 0;
+  for (int i = 0; i < size; i++) {
+    sum += arr[i];
+  }
+  return sum / size;
+}
+
+// Standart sapmayı hesaplayan fonksiyon
+double standartSapmaHesapla(const int arr[], int size, double mean) {
+  double sum = 0;
+  for (int i = 0; i < size; i++) {
+    sum += pow(arr[i] - mean, 2);
+  }
+  return sqrt(sum / size);
+}
+
+// Uç değerleri filtreleyerek en istikrarlı değeri bul
+int stabilSonucuBul(const int arr[], int size) {
+  // Dizinin ortalamasını hesapla
+  double mean = ortalamaHesapla(arr, size);
+
+  // Dizinin standart sapmasını hesapla
+  double stdDev = standartSapmaHesapla(arr, size, mean);
+
+  // Standart sapmanın 1.5 katından daha uzak olan değerleri göz ardı et
+  const double threshold = 1.5 * stdDev;
+
+  // Filtrelenmiş dizinin ortalamasını ve en yakın değeri bul
+  double filteredSum = 0;
+  int filteredCount = 0;
+  int closestValue = arr[0];
+  double minDifference = 1e6;  // çok büyük bir sayı kullanıyoruz
+
+  for (int i = 0; i < size; i++) {
+    if (fabs(arr[i] - mean) <= threshold) {
+      filteredSum += arr[i];
+      filteredCount++;
+
+      // Ortalamaya en yakın değeri bul
+      double diff = fabs(arr[i] - mean);
+      if (diff < minDifference) {
+        minDifference = diff;
+        closestValue = arr[i];
+      }
+    }
+  }
+
+  return closestValue;
 }
