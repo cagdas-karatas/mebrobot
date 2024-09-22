@@ -3,31 +3,26 @@ Servo bizim_bolge;
 Servo rakip_bolge;
 Servo ceza;
 
-const int in1 = 3;
-const int in2 = 4;
-const int in3 = 5;
-const int in4 = 6;
-const int enA = 2;
-const int enB = 7;
+const int in1 = 5;
+const int in2 = 6;
+const int in3 = 3;
+const int in4 = 4;
+const int enA = 7;  //sağ motor
+const int enB = 2;  //sol motor
 const int sol_goz = 26;
 const int on_goz = 24;
-const int sag_goz = 22;
+const int sag_goz = 28;
 
 // ****** BÖLGE BULAN RENK SENSÖRÜ ******
-#define s0 36 //Mavi
-#define s1 38 //Sarı
-#define s2 40 //Yeşil
-#define s3 42 //Mor
-#define out 34 //Turuncu
+#define s0 36   //Mavi
+#define s1 38   //Sarı
+#define s2 40   //Yeşil
+#define s3 42   //Mor
+#define out 34  //Turuncu
 // VCC Kırmızı
 // GND Beyaz
 
-int kirmizi = 0, yesil = 0, mavi = 0, noFilter = 0;
-
-int enKucukKirmizi = 50, enBuyukKirmizi = 50,
-    enKucukYesil = 50, enBuyukYesil = 50,
-    enKucukMavi = 50, enBuyukMavi = 50,
-    enKucukFiltresiz = 50, enBuyukFiltresiz = 50;
+int kirmizi = 0, mavi = 0, noFilter = 0;
 
 int sol_goz_durum = 0;
 
@@ -42,7 +37,9 @@ int renk_switch = 44;
 int rgb1 = 48;
 int rgb2 = 50;
 
-int bolge = 0;//DEFAULT MAVİ
+int bolge = 0;  //DEFAULT MAVİ
+
+int duvarla_isim_var = 0;
 
 void setup() {
   pinMode(in1, OUTPUT);
@@ -68,123 +65,137 @@ void setup() {
   pinMode(out, INPUT);
   Serial.begin(9600);
 
-  if (digitalRead(renk_switch) == 0)
-  {
+  if (digitalRead(renk_switch) == 0) {
     //rengimiz mavi
     digitalWrite(rgb1, LOW);
     digitalWrite(rgb2, HIGH);
     digitalWrite(bolge_sinyali, LOW);
-  }
-  else
-  {
+  } else {
     //rengimiz kırmızı
     digitalWrite(rgb1, HIGH);
     digitalWrite(rgb2, LOW);
     digitalWrite(bolge_sinyali, HIGH);
-    bolge = 1; //BÖLGEMİZ KIRMIZI
+    bolge = 1;  //BÖLGEMİZ KIRMIZI
   }
 
   ceza.attach(10);
-  rakip_bolge.attach(11);
-  bizim_bolge.attach(12);
-  ceza.write(180);
-  rakip_bolge.write(180);
-  bizim_bolge.write(180);
+  rakip_bolge.attach(12);
+  bizim_bolge.attach(11);
+  ceza.write(0);
+  rakip_bolge.write(120);
+  bizim_bolge.write(0);
 
   digitalWrite(kilit_sinyali, LOW);
 
-  olcum();
-  baslangicNoFilter = noFilter;
-/*
-  while (digitalRead(sag_goz) == 0) // SAĞ GÖZDE ENGEL VAR İSE (YANİ BALŞANGIÇTA) HAREKET ETMEYECEK
-  {}*/
   digitalWrite(s0, HIGH);
   digitalWrite(s1, LOW);
+  olcum();
+  baslangicNoFilter = noFilter;
+
+  while (digitalRead(sag_goz) == 0)  // SAĞ GÖZDE ENGEL VAR İSE (YANİ BALŞANGIÇTA) HAREKET ETMEYECEK
+  {}
 }
 
-void loop()
-{
-  Serial.println(digitalRead(sayac_bildirim));
-  Serial.println(digitalRead(ceza_bildirim));
-  if (digitalRead(sayac_bildirim)) //KENDİ TOPUMUZUN SAYACI DOLMUŞ
+void loop() {
+  /*
+  dur();
+  while (true) {
+    Serial.print("Sayaç Bildirim: ");
+    Serial.println(digitalRead(sayac_bildirim));
+    Serial.print("Ceza Bildirim: ");
+    Serial.println(digitalRead(ceza_bildirim));
+    Serial.println("\n");
+    delay(500);
+  }*/
+
+  if (digitalRead(sayac_bildirim) == 1)  //KENDİ TOPUMUZUN SAYACI DOLMUŞ
   {
     //DUVAR TAKİBİ VE KENDİ BÖLGEMİZE BOŞALTMA
     digitalWrite(kilit_sinyali, HIGH);
-    duvar_takip(1);
-  }
-  else if (digitalRead(ceza_bildirim)) //CEZA TOPLADIK
+    dur();
+    delay(2000);
+    duvarla_isim_var = 1;
+    while(duvarla_isim_var == 1)
+    {
+      duvar_takip(1);
+    }
+    digitalWrite(kilit_sinyali, LOW);
+    delay(5000);
+  } 
+  else if (digitalRead(ceza_bildirim) == 1)  //CEZA TOPLADIK
   {
     //DUVAR TAKİBİ VE RAKİP BÖLGEYE BOŞALTMA
     digitalWrite(kilit_sinyali, HIGH);
-    duvar_takip(0);
-  }
-  else
+    dur();
+    delay(2000);
+    duvarla_isim_var = 1;
+    while(duvarla_isim_var == 1)
+    {
+      duvar_takip(0);
+    }
+    digitalWrite(kilit_sinyali, LOW);
+    delay(5000);
+  } 
+  else 
   {
     rastgele();
   }
 }
 
 // ******************  RASTGELE FONKSİYONU  ****************************
-void rastgele()
-{
-  analogWrite(enA, 160);
-  analogWrite(enB, 150);
+void rastgele() {
+  analogWrite(enA, 130);
+  analogWrite(enB, 120);
   sol_goz_durum = 0;
-  if (digitalRead(on_goz) == 0) //  ÖNÜNDE ENGEL GÖRÜRSE SAĞ VE SOLDA DA ENGEL VAR MI DİYE KONTROL EDER
+  if (digitalRead(on_goz) == 0)  //  ÖNÜNDE ENGEL GÖRÜRSE SAĞ VE SOLDA DA ENGEL VAR MI DİYE KONTROL EDER
   {
-    if (digitalRead(sol_goz) == 0) // SOLDA DA ENGEL GÖRÜRSE
+    if (digitalRead(sol_goz) == 0)  // SOLDA DA ENGEL GÖRÜRSE
     {
       sol_goz_durum = 1;
       Serial.println("ÖN ve SOLDA AYNI ANDA ENGEL VAR...");
       // SOL KAPALI
-      analogWrite(enA, 160);
-      analogWrite(enB, 170);
+      analogWrite(enA, 170);
+      analogWrite(enB, 160);
       geri();
       delay(400);
       saga_don();
       delay(400);
-    }
-    else if (digitalRead(sag_goz) == 0) // SAĞDA DA ENGEL GÖRÜRSE
+    } else if (digitalRead(sag_goz) == 0)  // SAĞDA DA ENGEL GÖRÜRSE
     {
       Serial.println("ÖN ve SAĞDA AYNI ANDA ENGEL VAR...");
       // SAG KAPALI
-      analogWrite(enA, 160);
-      analogWrite(enB, 170);
+      analogWrite(enA, 170);
+      analogWrite(enB, 160);
       geri();
       delay(400);
       sola_don();
       delay(400);
     }
-  }
-  else if (digitalRead(sol_goz) == 0) // SADECE SOLDA ENGEL GÖRÜRSE
+  } else if (digitalRead(sol_goz) == 0)  // SADECE SOLDA ENGEL GÖRÜRSE
   {
     sol_goz_durum = 1;
     Serial.println("SADECE SOLDA ENGEL VAR...");
     // SOL KAPALI
-    analogWrite(enA, 160);
-    analogWrite(enB, 170);
+    analogWrite(enA, 170);
+    analogWrite(enB, 160);
     geri();
     delay(100);
     saga_don();
     delay(200);
-  }
-  else if (digitalRead(sag_goz) == 0) // SADECE SAĞDA ENGEL GÖRÜRSE
+  } else if (digitalRead(sag_goz) == 0)  // SADECE SAĞDA ENGEL GÖRÜRSE
   {
     Serial.println("SADECE SAĞDA ENGEL VAR...");
     // SAG KAPALI
-    analogWrite(enA, 160);
-    analogWrite(enB, 170);
+    analogWrite(enA, 170);
+    analogWrite(enB, 160);
     geri();
     delay(100);
     sola_don();
     delay(200);
-  }
-  else
-  {
+  } else {
     Serial.println("ENGEL YOOOK...");
     ileri();
   }
-
 }
 
 void olcum() {
@@ -201,13 +212,6 @@ void olcum() {
 
   mavi = pulseIn(out, LOW);
 
-  //yeşili okuyoruz
-  digitalWrite(s2, HIGH);
-  digitalWrite(s3, HIGH);
-  delay(10);
-
-  yesil = pulseIn(out, LOW);
-
   //Filtresiz okuyoruz
   digitalWrite(s2, HIGH);
   digitalWrite(s3, LOW);
@@ -223,340 +227,188 @@ void olcum() {
   Serial.print(mavi);
   Serial.print(" ");
 
-  Serial.print("YEŞİL: ");
-  Serial.print(yesil);
-  Serial.print(" ");
-
   Serial.print("FİLTRESİZ: ");
   Serial.println(noFilter);
-
-}
-
-boolean aralik_sorgu(int kk, int kb, int mk, int mb, int yk, int yb, int fk, int fb) {
-  return (
-           (kirmizi >= kk) && (kirmizi <= kb)
-           && (mavi >= mk) && (mavi <= mb)
-           && (yesil >= yk) && (yesil <= yb)
-           && (noFilter >= fk) && (noFilter <= fb) );
 }
 
 // ******************  FONKSİYONLAR BAŞLIYOR ****************************
-void soldan_park(int nereye) //nereye 1se kendi bölgemin kapağı 0sa rakibe gidiyorum cezanın kapağı
-{
-  // *** fren ***
-  dur();
-  delay(500);
-  // *** sağa geriye tank dönüşü ***
-  analogWrite(enA, 255);
-  analogWrite(enB, 100);
-  saga_don();
-  delay(2200);
-  // *** fren ***
-  dur();
-  delay(500);
-  // *** geri ***
-  analogWrite(enA, 160);
-  analogWrite(enB, 160);
-  geri();
-  delay(1000);
-  // *** fren ***
-  dur();
-  delay(500);
-  // *** sağa ileri***
-  analogWrite(enA, 100);
-  analogWrite(enB, 160);
-  ileri();
-  delay(550);
-  // *** geri ***
-  analogWrite(enA, 160);
-  analogWrite(enB, 160);
-  geri();
-  delay(1000);
-  // *** fren ***
-  dur();
-  delay(300);
-  // *** Bırakma hareketi için ileri ***
-  ileri();
-  //KAPAK AÇILIR
-  if (nereye) //KENDİ BÖLGEME GİTTİYSEM
-  {
-    bizim_bolge.write(180);
-    delay(1750);
-    bizim_bolge.write(0);
-  }
-  else
-  {
-    ceza.write(180);
-    delay(1750);
-    ceza.write(0);
-  }
 
-  while (1)
+void sagdan_park(int nereye) {
+  // *** fren ***
+  dur();
+  delay(500);
+  // park kodu
+  //HAFİF SOLA MEYİLLİ İLERİ
+  analogWrite(enA, 220);
+  analogWrite(enB, 80);
+  ileri();
+  delay(700);
+  dur();
+  delay(250);
+  //SAĞA MEYİLLİ GERİ
+  analogWrite(enA, 80);
+  analogWrite(enB, 220);
+  geri();
+  delay(1200);
+  //HAFİF SOLA MEYİLLİ İLERİ
+  analogWrite(enA, 130);
+  analogWrite(enB, 80);
+  ileri();
+  delay(600);
+  dur();
+  delay(100);
+  //SAĞA MEYİLLİ GERİ
+  analogWrite(enA, 80);
+  analogWrite(enB, 220);
+  geri();
+  delay(1200);
+  dur();
+  delay(1000);
+  //KAPAK AÇILIR
+  if (nereye == 1)  //KENDİ BÖLGEME GİTTİYSEM
   {
-    dur();
+    bizim_bolge.write(60);
+    delay(1000);
+    //HAFİF SOLA MEYİLLİ İLERİ
+    analogWrite(enA, 150);
+    analogWrite(enB, 120);
+    ileri();
+    delay(2000);
+    bizim_bolge.write(0);
+  } else {
+    rakip_bolge.write(150);
+    delay(1000);
+    analogWrite(enA, 150);
+    analogWrite(enB, 120);
+    ileri();
+    delay(2000);
+    rakip_bolge.write(120);
   }
 }
 
-void sagdan_park(int nereye)
+void duvar_takip(int nereye)  //NEREYE 1SE KENDİ BÖLGEME 0SA RAKİBE
 {
-  // *** fren ***
-  dur();
-  delay(500);
-  // *** sola geriye tank dönüşü ***
-  analogWrite(enA, 100);
-  analogWrite(enB, 255);
-  sola_don();
-  delay(2200);
-  // *** fren ***
-  dur();
-  delay(500);
-  // *** geri ***
-  analogWrite(enA, 160);
-  analogWrite(enB, 160);
-  geri();
-  delay(1000);
-  // *** fren ***
-  dur();
-  delay(500);
-  // *** sola ileri***
-  analogWrite(enA, 160);
-  analogWrite(enB, 100);
-  ileri();
-  delay(550);
-  // *** geri ***
-  analogWrite(enA, 160);
-  analogWrite(enB, 160);
-  geri();
-  delay(1000);
-  // *** fren ***
-  dur();
-  delay(300);
-  // *** Bırakma hareketi için ileri ***
-  ileri();
-  //KAPAK AÇILIR
-  if (nereye) //KENDİ BÖLGEME GİTTİYSEM
-  {
-    bizim_bolge.write(180);
-    delay(1750);
-    bizim_bolge.write(0);
-  }
-  else
-  {
-    ceza.write(180);
-    delay(1750);
-    ceza.write(0);
-  }
-  while (1)
-  {
-    dur();
-  }
-}
-
-void duvar_takip(int nereye) //NEREYE 1SE KENDİ BÖLGEME 0SA RAKİBE
-{
-  if (digitalRead(on_goz) == 0)
-  {
+  if (digitalRead(sol_goz) == 0) {
+    //HAFİF GERİ GEL
+    analogWrite(enA, 130);
+    analogWrite(enB, 130);
+    geri();
+    delay(200);
     dur();
     delay(100);
+    //SOLA MEYİLLİ GERİ GEL
+    analogWrite(enA, 0);
+    analogWrite(enB, 140);
+    geri();
+    delay(1000);
+    //SAĞA MEYİLLİ İLERİ
+    analogWrite(enA, 130);
+    analogWrite(enB, 80);
+    ileri();
+    delay(400);
+  }
+  if (digitalRead(sag_goz) == 0) {  //ÖN GÖZ GÖRENE KADAR İLERLE //SAĞ GÖZÜM DE GÖRÜYORSA KENDİNİ DUVARLA PARALEL YAP
+    analogWrite(enA, 0);
+    analogWrite(enB, 160);
     geri();
     delay(300);
-  }
-  else if (digitalRead(sol_goz) == 0)
-  {
-    // SOL KAPALI
-    if (digitalRead(on_goz) == 0)
+    while (!((noFilter - baslangicNoFilter) > 15 && (kirmizi < mavi && nereye == bolge)) && !((noFilter - baslangicNoFilter) > 15 && (mavi < kirmizi && nereye != bolge)))  //BÖLGE OLMADIĞI SÜRECE DUVAR DÖNGÜSÜ
     {
-      // ÖN KAPALI
-      dur();
-      delay(100);
-      sola_gerile();
-      delay(300);
-    }
-    else
-    {
-      // SOL DUVAR DÖNGÜSÜ
-      dur();
-      delay(100);
-      while (digitalRead(sol_goz) == 0)
-      {
-        //SOL KAPALI
-        if (digitalRead(on_goz) == 0)
-        {
-          // ÖN KAPALI
-          //KÖŞEYE GELDİK
-          dur();
-          delay(100);
-          analogWrite(enA, 160);
-          analogWrite(enB, 0);
-          geri();
-          delay(700);
-          dur();
-          delay(300);
-          olcum();
-          if ( (kirmizi < mavi && (noFilter - baslangicNoFilter) > 20) && (nereye == bolge) ) // (nereye == 1 && bolge == 1) || (nereye == 0 && bolge == 0)
-          {
-            //KIRMIZI BÖLGE
-            soldan_park(nereye);
-          }
-          else if ( (mavi < kirmizi && (noFilter - baslangicNoFilter) > 20) && (nereye != bolge) )
-          {
-            //MAVİ BÖLGE
-            soldan_park(nereye);
-          }
+      if (digitalRead(on_goz) == 0) {  //KÖŞEYE GELDİK
+        //BEKLE
+        dur();
+        delay(100);
+        //SOLA TANK DÖNÜŞÜ
+        analogWrite(enA, 130);
+        analogWrite(enB, 130);
+        sola_don();
+        delay(600);
+      } else {
+        while (digitalRead(sag_goz) == 0) {
+          analogWrite(enA, 120);
+          analogWrite(enB, 120);
+          sola_don();
+        }
+        unsigned long firstTime = millis();
+        while (digitalRead(sag_goz) == 1) {
           saga_ilerle();
-          delay(200);
-        }
-        else
-        {
-          //SOL DUVARDAYIZ
-          saga_ilerle();
-        }
-      }
-      while (digitalRead(sol_goz) == 1)
-      {
-        //SOL GÖZDE ENGEL YOK SOL DUVARA YANAŞ
-        sola_ilerle();
-      }
-    }
-  }
-
-  else if (digitalRead(sag_goz) == 0)
-  {
-
-    // SAG KAPALI
-    if (digitalRead(on_goz) == 0)
-    {
-      // ÖN KAPALI
-      dur();
-      delay(100);
-      saga_gerile();
-      delay(300);
-    }
-    else
-    {
-      // SAĞ DUVAR DÖNGÜSÜ
-      dur();
-      delay(100);
-      while (digitalRead(sag_goz) == 0)
-      {
-        //SAĞ KAPALI
-        if (digitalRead(on_goz) == 0)
-        {
-          // ÖN KAPALI
-          //KÖŞEDEYİZ
-          dur();
-          delay(100);
-          analogWrite(enA, 0);
-          analogWrite(enB, 160);
-          geri();
-          delay(700);
-          dur();
-          delay(300);
-          olcum();
-          if ( (kirmizi < mavi && (noFilter - baslangicNoFilter) > 20) && (nereye == bolge) ) // (nereye == 1 && bolge == 1) || (nereye == 0 && bolge == 0)
-          {
-            //KIRMIZI BÖLGE
-            sagdan_park(nereye);
-          }
-          else if ( (mavi < kirmizi && (noFilter - baslangicNoFilter) > 20) && (nereye != bolge) )
-          {
-            //MAVİ BÖLGE
-            sagdan_park(nereye);
+          if (millis() - firstTime > 5000) {
+            analogWrite(enA, 120);
+            analogWrite(enB, 120);
+            ileri();
+            delay(1500);
           }
         }
-        else
-        {
-          sola_ilerle();
-        }
       }
-      while (digitalRead(sag_goz) == 1)
-      {
-        //SAĞDA ENGEL YOK SAĞ DUVARA YANAŞ
-        saga_ilerle();
-      }
+      olcum();
     }
-  }
-  else
-  {
-    analogWrite(enA, 160);
-    analogWrite(enB, 150);
+    sagdan_park(nereye);
+    duvarla_isim_var = 0;
+  } else {
+    analogWrite(enA, 110);
+    analogWrite(enB, 110);
     ileri();
   }
 }
 
-void ileri()
-{
+void ileri() {
   digitalWrite(in1, HIGH);
   digitalWrite(in2, LOW);
   digitalWrite(in3, HIGH);
   digitalWrite(in4, LOW);
 }
-void dur()
-{
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, HIGH);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, HIGH);
+void dur() {
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, LOW);
 }
 
-void geri()
-{
+void geri() {
   digitalWrite(in1, LOW);
   digitalWrite(in2, HIGH);
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
 }
 
-void saga_don()
-{
+void saga_don() {
   digitalWrite(in1, LOW);
   digitalWrite(in2, HIGH);
   digitalWrite(in3, HIGH);
   digitalWrite(in4, LOW);
 }
 
-void sola_don()
-{
+void sola_don() {
   digitalWrite(in1, HIGH);
   digitalWrite(in2, LOW);
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
 }
 
-void saga_ilerle()
-{
-  analogWrite(enA, 100);
+void saga_ilerle() {
+  analogWrite(enA, 80);
   analogWrite(enB, 130);
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
+  ileri();
 }
 
-void saga_gerile()
-{
-  analogWrite(enA, 160);
-  analogWrite(enB, 100);
+void sola_ilerle() {
+  analogWrite(enA, 130);
+  analogWrite(enB, 80);
+  ileri();
+}
+
+void saga_gerile() {
+  analogWrite(enA, 130);
+  analogWrite(enB, 80);
   digitalWrite(in1, LOW);
   digitalWrite(in2, HIGH);
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
 }
 
-void sola_ilerle()
-{
-  analogWrite(enA, 130);
-  analogWrite(enB, 100);
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
-}
-
-void sola_gerile()
-{
-  analogWrite(enA, 100);
-  analogWrite(enB, 160);
+void sola_gerile() {
+  analogWrite(enA, 80);
+  analogWrite(enB, 130);
   digitalWrite(in1, LOW);
   digitalWrite(in2, HIGH);
   digitalWrite(in3, LOW);

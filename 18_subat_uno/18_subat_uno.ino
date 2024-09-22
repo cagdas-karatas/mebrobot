@@ -24,7 +24,7 @@ int top_sensoru = 13;
 int bolge = 0;
 
 void setup() {
-  delay(500);
+  delay(2000);
   arka_sol_kapak.attach(3);
   arka_sag_kapak.attach(5);
   ust_kapak.attach(6);
@@ -41,8 +41,7 @@ void setup() {
   pinMode(bolge_bildirim, INPUT);
 
   //MEGADAN GELEN BÖLGE BİLDİRİMİ
-  
-  if (digitalRead(bolge_bildirim)) {
+  if (digitalRead(bolge_bildirim) == 1) {
     bolge = 1;
   }
 
@@ -86,7 +85,7 @@ void loop() {
   Serial.print("Top var mı: ");
   Serial.println(digitalRead(top_sensoru));
 
-  if (yuzde_sorgu(mavi, kirmizi, 160, 400, "m/k: ") && top_var_mi()) //KIRMIZI İÇİN
+  if (yuzde_sorgu(mavi, kirmizi, 160, 400, "m/k: ") && top_var_mi())  //KIRMIZI İÇİN
   {
     //EMİN OLMA ÖLÇÜMÜ
     for (int i = 0; i < 5; i++) {
@@ -102,7 +101,7 @@ void loop() {
       //KIRMIZI TOP ALGILADIK
       Serial.println("Kırmızı");
 
-      if (bolge) //BÖLGEMİZ KIRMIZI
+      if (bolge)  //BÖLGEMİZ KIRMIZI
       {
         dogru_al();
         dogru_sayac++;
@@ -113,17 +112,7 @@ void loop() {
 
       //eğer sayac dolmuşsa sinyal gönder
       //while'a girilecek mega işini bitirip sinyal gönderene kadar bu while'dan çıkılamayacak
-      /*
-    if (dogru_sayac == 3)
-    {
-      digitalWrite(sayac_sinyali, HIGH);
-      delay(3000);
-      while (digitalRead(kilit_bildirim) == 1)
-      {
-
-      }
-      dogru_sayac = 0;
-    }*/
+      sayac_kitlenmesi();
 
       //renk sensörü hala kırmızı algılamasın diye verileri güncelliyoruz
       for (int i = 1; i < 7; i++) {
@@ -134,8 +123,7 @@ void loop() {
       }
     }
 
-  }
-  else if (yuzde_sorgu(mavi, kirmizi, 30, 80, "") && top_var_mi()) //MAVİ İÇİN
+  } else if (yuzde_sorgu(mavi, kirmizi, 30, 70, ""))  //MAVİ İÇİN
   {
     //EMİN OLMA ÖLÇÜMÜ
     for (int i = 0; i < 5; i++) {
@@ -147,7 +135,7 @@ void loop() {
     kirmizi = stabilSonucuBul(kirmizi_veriler, 5);
     mavi = stabilSonucuBul(mavi_veriler, 5);
 
-    if (yuzde_sorgu(mavi, kirmizi, 30, 80, "") && top_var_mi()) {
+    if (yuzde_sorgu(mavi, kirmizi, 30, 70, "")) {
       //MAVİ TOP ALGILADIK
       Serial.println("Mavi");
 
@@ -160,17 +148,7 @@ void loop() {
         dogru_sayac++;
       }
 
-      /*
-    if (dogru_sayac == 3)
-    {
-      digitalWrite(sayac_sinyali, HIGH);
-      delay(3000);
-      while (digitalRead(kilit_bildirim) == 1)
-      {
-
-      }
-      dogru_sayac = 0;
-    }*/
+      sayac_kitlenmesi();
 
       //renk sensörü hala mavi algılamasın diye verileri güncelliyoruz
       for (int i = 1; i < 7; i++) {
@@ -181,8 +159,7 @@ void loop() {
       }
     }
 
-  }
-  else if (top_var_mi()) //CEZA İÇİN
+  } else if (top_var_mi())  //CEZA İÇİN
   {
     //EMİN OLMA ÖLÇÜMÜ
     for (int i = 0; i < 5; i++) {
@@ -199,14 +176,13 @@ void loop() {
       Serial.println("Ceza");
 
       ceza_al();
-      /*
-    //direkt megaya sinyal gönder ve tekrar while'a girilir
-    digitalWrite(ceza_sinyali, HIGH);
-    delay(3000);
-    while (digitalRead(kilit_bildirim) == 1)
-    {
 
-    }*/
+      //direkt megaya sinyal gönder ve tekrar while'a girilir
+      digitalWrite(ceza_sinyali, HIGH);
+      delay(10000);
+      while (digitalRead(kilit_bildirim) == 1) {
+      }
+      digitalWrite(ceza_sinyali, LOW);
 
       //renk sensörü hala ceza algılamasın diye verileri güncelliyoruz
       for (int i = 1; i < 7; i++) {
@@ -217,9 +193,7 @@ void loop() {
       }
     }
 
-  }
-  else 
-  {
+  } else {
     Serial.println("Boşş");
   }
 
@@ -285,6 +259,18 @@ void ceza_al() {
   delay(200);
   arka_sol_kapak.write(25);
   arka_sag_kapak.write(140);
+}
+
+void sayac_kitlenmesi() {
+  if (dogru_sayac == 3) {
+    digitalWrite(sayac_sinyali, HIGH);
+    delay(10000);
+    while (digitalRead(kilit_bildirim) == 1) 
+    {
+    }
+    dogru_sayac = 0;
+    digitalWrite(sayac_sinyali, LOW);
+  }
 }
 
 boolean yuzde_sorgu(int buyukDegisken, int kucukDegisken, int kucuk, int buyuk, String mesaj) {
