@@ -81,7 +81,7 @@ void setup() {
   ceza.attach(10);
   rakip_bolge.attach(12);
   bizim_bolge.attach(11);
-  ceza.write(0);
+  ceza.write(40);
   rakip_bolge.write(120);
   bizim_bolge.write(0);
 
@@ -115,29 +115,24 @@ void loop() {
     dur();
     delay(2000);
     duvarla_isim_var = 1;
-    while(duvarla_isim_var == 1)
-    {
+    while (duvarla_isim_var == 1) {
       duvar_takip(1);
     }
     digitalWrite(kilit_sinyali, LOW);
-    delay(5000);
-  } 
-  else if (digitalRead(ceza_bildirim) == 1)  //CEZA TOPLADIK
+    delay(2000);
+  } else if (digitalRead(ceza_bildirim) == 1)  //CEZA TOPLADIK
   {
     //DUVAR TAKİBİ VE RAKİP BÖLGEYE BOŞALTMA
     digitalWrite(kilit_sinyali, HIGH);
     dur();
     delay(2000);
     duvarla_isim_var = 1;
-    while(duvarla_isim_var == 1)
-    {
+    while (duvarla_isim_var == 1) {
       duvar_takip(0);
     }
     digitalWrite(kilit_sinyali, LOW);
-    delay(5000);
-  } 
-  else 
-  {
+    delay(1000);
+  } else {
     rastgele();
   }
 }
@@ -238,30 +233,35 @@ void sagdan_park(int nereye) {
   dur();
   delay(500);
   // park kodu
+  //SOLA DÖN
+  analogWrite(enA, 140);
+  analogWrite(enB, 140);
+  sola_don();
+  delay(700);
   //HAFİF SOLA MEYİLLİ İLERİ
-  analogWrite(enA, 220);
-  analogWrite(enB, 80);
+  analogWrite(enA, 150);
+  analogWrite(enB, 100);
   ileri();
   delay(700);
   dur();
   delay(250);
-  //SAĞA MEYİLLİ GERİ
-  analogWrite(enA, 80);
-  analogWrite(enB, 220);
+  //NORMAL GERİ
+  analogWrite(enA, 150);
+  analogWrite(enB, 150);
   geri();
-  delay(1200);
+  delay(1000);
   //HAFİF SOLA MEYİLLİ İLERİ
-  analogWrite(enA, 130);
-  analogWrite(enB, 80);
+  analogWrite(enA, 140);
+  analogWrite(enB, 100);
   ileri();
   delay(600);
   dur();
   delay(100);
-  //SAĞA MEYİLLİ GERİ
-  analogWrite(enA, 80);
-  analogWrite(enB, 220);
+  //NORMAL GERİ
+  analogWrite(enA, 150);
+  analogWrite(enB, 150);
   geri();
-  delay(1200);
+  delay(1000);
   dur();
   delay(1000);
   //KAPAK AÇILIR
@@ -269,20 +269,39 @@ void sagdan_park(int nereye) {
   {
     bizim_bolge.write(60);
     delay(1000);
-    //HAFİF SOLA MEYİLLİ İLERİ
-    analogWrite(enA, 150);
-    analogWrite(enB, 120);
-    ileri();
-    delay(2000);
+    if (digitalRead(sol_goz) == 0) {
+      //HAFİF SAĞA MEYİLLİ İLERİ
+      analogWrite(enA, 120);
+      analogWrite(enB, 150);
+      ileri();
+      delay(2000);
+    } else {
+      //HAFİF SOLA MEYİLLİ İLERİ
+      analogWrite(enA, 150);
+      analogWrite(enB, 120);
+      ileri();
+      delay(1300);
+    }
     bizim_bolge.write(0);
+    dur();
   } else {
-    rakip_bolge.write(150);
+    ceza.write(0);
     delay(1000);
-    analogWrite(enA, 150);
-    analogWrite(enB, 120);
-    ileri();
-    delay(2000);
-    rakip_bolge.write(120);
+    if (digitalRead(sol_goz) == 0) {
+      //HAFİF Sağa MEYİLLİ İLERİ
+      analogWrite(enA, 120);
+      analogWrite(enB, 150);
+      ileri();
+      delay(2000);
+    } else {
+      //HAFİF SOLA MEYİLLİ İLERİ
+      analogWrite(enA, 150);
+      analogWrite(enB, 120);
+      ileri();
+      delay(1300);
+    }
+    ceza.write(40);
+    dur();
   }
 }
 
@@ -325,8 +344,8 @@ void duvar_takip(int nereye)  //NEREYE 1SE KENDİ BÖLGEME 0SA RAKİBE
         delay(600);
       } else {
         while (digitalRead(sag_goz) == 0) {
-          analogWrite(enA, 120);
-          analogWrite(enB, 120);
+          analogWrite(enA, 200);
+          analogWrite(enB, 200);
           sola_don();
         }
         unsigned long firstTime = millis();
