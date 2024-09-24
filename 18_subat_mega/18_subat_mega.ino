@@ -23,6 +23,8 @@ const int sag_goz = 28;
 // GND Beyaz
 
 int kirmizi = 0, mavi = 0, noFilter = 0;
+int kirmizi_veriler[5] = { 0, 0, 0, 0, 0 };
+int mavi_veriler[5] = { 0, 0, 0, 0, 0 };
 
 int sol_goz_durum = 0;
 
@@ -92,22 +94,20 @@ void setup() {
   olcum();
   baslangicNoFilter = noFilter;
 
-  while (digitalRead(sag_goz) == 0)  // SAĞ GÖZDE ENGEL VAR İSE (YANİ BALŞANGIÇTA) HAREKET ETMEYECEK
+  // SAĞ GÖZDE ENGEL VAR İSE (YANİ BALŞANGIÇTA) HAREKET ETMEYECEK
+  
+  while (digitalRead(sag_goz) == 0)  
   {}
+  //TAM GAZ İLERİ CEZAYI AL
+/*
+  analogWrite(enA, 255);
+  analogWrite(enB, 255);
+  ileri();
+  delay(1200);*/
 }
 
 void loop() {
-  /*
-  dur();
-  while (true) {
-    Serial.print("Sayaç Bildirim: ");
-    Serial.println(digitalRead(sayac_bildirim));
-    Serial.print("Ceza Bildirim: ");
-    Serial.println(digitalRead(ceza_bildirim));
-    Serial.println("\n");
-    delay(500);
-  }*/
-
+  
   if (digitalRead(sayac_bildirim) == 1)  //KENDİ TOPUMUZUN SAYACI DOLMUŞ
   {
     //DUVAR TAKİBİ VE KENDİ BÖLGEMİZE BOŞALTMA
@@ -119,7 +119,7 @@ void loop() {
       duvar_takip(1);
     }
     digitalWrite(kilit_sinyali, LOW);
-    delay(2000);
+    delay(4000);
   } else if (digitalRead(ceza_bildirim) == 1)  //CEZA TOPLADIK
   {
     //DUVAR TAKİBİ VE RAKİP BÖLGEYE BOŞALTMA
@@ -131,15 +131,16 @@ void loop() {
       duvar_takip(0);
     }
     digitalWrite(kilit_sinyali, LOW);
-    delay(1000);
+    delay(4000);
   } else {
     rastgele();
   }
+  
 }
 
 // ******************  RASTGELE FONKSİYONU  ****************************
 void rastgele() {
-  analogWrite(enA, 130);
+  analogWrite(enA, 120);
   analogWrite(enB, 120);
   sol_goz_durum = 0;
   if (digitalRead(on_goz) == 0)  //  ÖNÜNDE ENGEL GÖRÜRSE SAĞ VE SOLDA DA ENGEL VAR MI DİYE KONTROL EDER
@@ -194,6 +195,20 @@ void rastgele() {
 }
 
 void olcum() {
+  //verileri güncelliyoruz
+  for (int i = 0; i < 5; i++) {
+    olc();
+    kirmizi_veriler[i] = kirmizi;
+    mavi_veriler[i] = mavi;
+    delay(10);
+  }
+
+  kirmizi = stabilSonucuBul(kirmizi_veriler, 5);
+  mavi = stabilSonucuBul(mavi_veriler, 5);
+}
+
+void olc() {
+  //kırmızıyı okuyoruz
   digitalWrite(s2, LOW);
   digitalWrite(s3, LOW);
   delay(10);
@@ -206,24 +221,6 @@ void olcum() {
   delay(10);
 
   mavi = pulseIn(out, LOW);
-
-  //Filtresiz okuyoruz
-  digitalWrite(s2, HIGH);
-  digitalWrite(s3, LOW);
-  delay(10);
-
-  noFilter = pulseIn(out, LOW);
-
-  Serial.print("KIRMIZI: ");
-  Serial.print(kirmizi);
-  Serial.print(" ");
-
-  Serial.print("MAVİ: ");
-  Serial.print(mavi);
-  Serial.print(" ");
-
-  Serial.print("FİLTRESİZ: ");
-  Serial.println(noFilter);
 }
 
 // ******************  FONKSİYONLAR BAŞLIYOR ****************************
@@ -232,17 +229,23 @@ void sagdan_park(int nereye) {
   // *** fren ***
   dur();
   delay(500);
+  // ÖN GÖZ GÖRENE KADAR İLERLE
+  while (digitalRead(on_goz) == 1) {
+    analogWrite(enA, 110);
+    analogWrite(enB, 110);
+    ileri();
+  }
   // park kodu
   //SOLA DÖN
   analogWrite(enA, 140);
   analogWrite(enB, 140);
   sola_don();
-  delay(700);
+  delay(500);
   //HAFİF SOLA MEYİLLİ İLERİ
   analogWrite(enA, 150);
   analogWrite(enB, 100);
   ileri();
-  delay(700);
+  delay(600);
   dur();
   delay(250);
   //NORMAL GERİ
@@ -254,7 +257,7 @@ void sagdan_park(int nereye) {
   analogWrite(enA, 140);
   analogWrite(enB, 100);
   ileri();
-  delay(600);
+  delay(400);
   dur();
   delay(100);
   //NORMAL GERİ
@@ -305,8 +308,9 @@ void sagdan_park(int nereye) {
   }
 }
 
-void duvar_takip(int nereye)  //NEREYE 1SE KENDİ BÖLGEME 0SA RAKİBE
+void duvar_takip(int nereye)  //NEREYE 1'SE KENDİ BÖLGEME, 0'SA RAKİBE
 {
+  olcum();
   if (digitalRead(sol_goz) == 0) {
     //HAFİF GERİ GEL
     analogWrite(enA, 130);
@@ -319,33 +323,41 @@ void duvar_takip(int nereye)  //NEREYE 1SE KENDİ BÖLGEME 0SA RAKİBE
     analogWrite(enA, 0);
     analogWrite(enB, 140);
     geri();
-    delay(1000);
+    delay(800);
     //SAĞA MEYİLLİ İLERİ
     analogWrite(enA, 130);
     analogWrite(enB, 80);
     ileri();
     delay(400);
   }
-  if (digitalRead(sag_goz) == 0) {  //ÖN GÖZ GÖRENE KADAR İLERLE //SAĞ GÖZÜM DE GÖRÜYORSA KENDİNİ DUVARLA PARALEL YAP
+  else if (digitalRead(sag_goz) == 0) { //SAĞ GÖZÜM DE GÖRÜYORSA KENDİNİ DUVARLA PARALEL YAP
     analogWrite(enA, 0);
     analogWrite(enB, 160);
     geri();
-    delay(300);
-    while (!((noFilter - baslangicNoFilter) > 15 && (kirmizi < mavi && nereye == bolge)) && !((noFilter - baslangicNoFilter) > 15 && (mavi < kirmizi && nereye != bolge)))  //BÖLGE OLMADIĞI SÜRECE DUVAR DÖNGÜSÜ
+    delay(200);
+    olcum();
+    while (!(yuzde_sorgu(mavi, kirmizi, 200, 400, "") && nereye == bolge) && !(yuzde_sorgu(mavi, kirmizi, 40, 60, "") && nereye != bolge))  //BÖLGE OLMADIĞI SÜRECE DUVAR DÖNGÜSÜ
     {
       if (digitalRead(on_goz) == 0) {  //KÖŞEYE GELDİK
         //BEKLE
         dur();
-        delay(100);
+        delay(50);
+        //Sağa meyilli geri
+        analogWrite(enA, 80);
+        analogWrite(enB, 200);
+        geri();
+        delay(200);
+        dur();
+        delay(50);
         //SOLA TANK DÖNÜŞÜ
-        analogWrite(enA, 130);
-        analogWrite(enB, 130);
+        analogWrite(enA, 180);
+        analogWrite(enB, 180);
         sola_don();
-        delay(600);
+        delay(200);
       } else {
         while (digitalRead(sag_goz) == 0) {
-          analogWrite(enA, 200);
-          analogWrite(enB, 200);
+          analogWrite(enA, 120);
+          analogWrite(enB, 120);
           sola_don();
         }
         unsigned long firstTime = millis();
@@ -364,8 +376,8 @@ void duvar_takip(int nereye)  //NEREYE 1SE KENDİ BÖLGEME 0SA RAKİBE
     sagdan_park(nereye);
     duvarla_isim_var = 0;
   } else {
-    analogWrite(enA, 110);
-    analogWrite(enB, 110);
+    analogWrite(enA, 130);
+    analogWrite(enB, 130);
     ileri();
   }
 }
@@ -377,10 +389,10 @@ void ileri() {
   digitalWrite(in4, LOW);
 }
 void dur() {
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, LOW);
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, HIGH);
 }
 
 void geri() {
@@ -405,14 +417,14 @@ void sola_don() {
 }
 
 void saga_ilerle() {
-  analogWrite(enA, 80);
-  analogWrite(enB, 130);
+  analogWrite(enA, 90);
+  analogWrite(enB, 120);
   ileri();
 }
 
 void sola_ilerle() {
-  analogWrite(enA, 130);
-  analogWrite(enB, 80);
+  analogWrite(enA, 150);
+  analogWrite(enB, 100);
   ileri();
 }
 
@@ -434,9 +446,68 @@ void sola_gerile() {
   digitalWrite(in4, HIGH);
 }
 
-boolean yuzde_sorgu(int kucuk, int buyuk) {
-  float yuzde = ((float)mavi / (float)kirmizi) * 100;
-  Serial.print("m/k = ");
+boolean yuzde_sorgu(int buyukDegisken, int kucukDegisken, int kucuk, int buyuk, String mesaj) {
+  float yuzde = ((float)buyukDegisken / (float)kucukDegisken) * 100;
+  Serial.print(mesaj);
   Serial.println(yuzde);
   return (yuzde >= kucuk) && (yuzde <= buyuk);
+}
+
+
+
+
+
+
+
+
+// Ortalama hesaplayan fonksiyon
+double ortalamaHesapla(const int arr[], int size) {
+  double sum = 0;
+  for (int i = 0; i < size; i++) {
+    sum += arr[i];
+  }
+  return sum / size;
+}
+
+// Standart sapmayı hesaplayan fonksiyon
+double standartSapmaHesapla(const int arr[], int size, double mean) {
+  double sum = 0;
+  for (int i = 0; i < size; i++) {
+    sum += pow(arr[i] - mean, 2);
+  }
+  return sqrt(sum / size);
+}
+
+// Uç değerleri filtreleyerek en istikrarlı değeri bul
+int stabilSonucuBul(const int arr[], int size) {
+  // Dizinin ortalamasını hesapla
+  double mean = ortalamaHesapla(arr, size);
+
+  // Dizinin standart sapmasını hesapla
+  double stdDev = standartSapmaHesapla(arr, size, mean);
+
+  // Standart sapmanın 1.5 katından daha uzak olan değerleri göz ardı et
+  const double threshold = 1.5 * stdDev;
+
+  // Filtrelenmiş dizinin ortalamasını ve en yakın değeri bul
+  double filteredSum = 0;
+  int filteredCount = 0;
+  int closestValue = arr[0];
+  double minDifference = 1e6;  // çok büyük bir sayı kullanıyoruz
+
+  for (int i = 0; i < size; i++) {
+    if (fabs(arr[i] - mean) <= threshold) {
+      filteredSum += arr[i];
+      filteredCount++;
+
+      // Ortalamaya en yakın değeri bul
+      double diff = fabs(arr[i] - mean);
+      if (diff < minDifference) {
+        minDifference = diff;
+        closestValue = arr[i];
+      }
+    }
+  }
+
+  return closestValue;
 }

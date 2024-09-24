@@ -178,6 +178,7 @@ void loop() {
       ceza_al();
 
       //direkt megaya sinyal gönder ve tekrar while'a girilir
+      
       digitalWrite(ceza_sinyali, HIGH);
       delay(10000);
       while (digitalRead(kilit_bildirim) == 1) {
